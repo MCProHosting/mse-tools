@@ -81,21 +81,22 @@ func (w *Writer) Write(id int, data interface{}) (int, error) {
 		return w.writeBinary(id, v)
 	}
 
-	panic(fmt.Sprintf("Unexpected type %s", data))
 	return 0, errors.New("Unexpected type")
 }
 
-func (w *Writer) WriteListStart(id int) {
+func (w *Writer) WriteListStart(id int) error {
 	headerOffset := w.Offset()
 	if _, err := w.WriteUnknownSizeHeader(id); err != nil {
-		panic(fmt.Sprintf("Failed to write header. err=%s", err.Error()))
+		return err
 	}
 	bodyOffset := w.Offset()
 
 	w.listInfo = append(w.listInfo, writerListInfo{id: id, headerOffset: headerOffset, bodyOffset: bodyOffset})
+
+	return nil
 }
 
-func (w *Writer) WriteListEnd(id int) {
+func (w *Writer) WriteListEnd(id int) error {
 	currentOffset := w.Offset()
 
 	rewroteHeaders := false
@@ -108,7 +109,7 @@ func (w *Writer) WriteListEnd(id int) {
 				w.offset = li.headerOffset
 				rewroteHeaders = true
 				if _, err = w.writeHeader8(li.id, currentOffset-li.bodyOffset); err != nil {
-					panic(fmt.Sprintf("Header rewrite failed. err=%s", err.Error()))
+					return err
 				}
 			}
 		}
@@ -121,15 +122,17 @@ func (w *Writer) WriteListEnd(id int) {
 	if rewroteHeaders {
 		_, err := w.seeker.Seek(currentOffset, os.SEEK_SET)
 		if err != nil {
-			panic(fmt.Sprintf("Seek back to original offset failed. err=%s", err.Error()))
+			return err
 		}
 		w.offset = currentOffset
 	}
+
+	return nil
 }
 
 func (w *Writer) WriteVoid(size int) (int, error) {
 	if size < 2 {
-		panic("Can't void a space smaller than 2 bytes.")
+		return 0, errors.New("Can't void a space smaller than 2 bytes.")
 	}
 
 	var total = 0
