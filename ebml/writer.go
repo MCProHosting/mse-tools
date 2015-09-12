@@ -97,6 +97,10 @@ func (w *Writer) WriteListStart(id int) error {
 }
 
 func (w *Writer) WriteListEnd(id int) error {
+	if len(w.listInfo) < 1 {
+		return errors.New("No ListStart")
+	}
+
 	currentOffset := w.Offset()
 
 	rewroteHeaders := false
